@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
+import { useState, useEffect, useRef } from 'react';
+import anime from 'animejs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { RotateCcw, Trophy, Users, Sparkles, Zap, Crown } from 'lucide-react';
+import AnimatedButton from '@/components/AnimatedButton';
 
 type Player = 'X' | 'O' | null;
 type GameState = 'playing' | 'won' | 'draw';
@@ -34,6 +35,49 @@ export default function TicTacToeGame() {
   const [celebrationEmojis, setCelebrationEmojis] = useState<string[]>([]);
   const [isAnimating, setIsAnimating] = useState(false);
   const [lastMove, setLastMove] = useState<number | null>(null);
+  
+  // Refs for animations
+  const boardRef = useRef<HTMLDivElement>(null);
+  const scoreRef = useRef<HTMLDivElement>(null);
+  const gameStatusRef = useRef<HTMLDivElement>(null);
+  const backgroundRef = useRef<HTMLDivElement>(null);
+
+  // Initial animations on component mount
+  useEffect(() => {
+    // Board entrance animation
+    if (boardRef.current) {
+      anime({
+        targets: boardRef.current.children,
+        scale: [0, 1],
+        opacity: [0, 1],
+        delay: anime.stagger(100, {start: 300}),
+        duration: 600,
+        easing: 'easeOutElastic(1, .8)',
+      });
+    }
+
+    // Background floating animation
+    if (backgroundRef.current) {
+      anime({
+        targets: backgroundRef.current.children,
+        rotate: '1turn',
+        duration: 20000,
+        loop: true,
+        easing: 'linear',
+      });
+    }
+
+    // Initial status animation
+    if (gameStatusRef.current) {
+      anime({
+        targets: gameStatusRef.current,
+        opacity: [0, 1],
+        translateY: [-20, 0],
+        duration: 800,
+        easing: 'easeOutCubic',
+      });
+    }
+  }, []);
 
   const checkWinner = (board: Player[]): { winner: Player; line: number[] } => {
     for (const [a, b, c] of WINNING_COMBINATIONS) {
@@ -44,12 +88,93 @@ export default function TicTacToeGame() {
     return { winner: null, line: [] };
   };
 
+  // Animation functions
+  const animateWinningLine = (line: number[]) => {
+    line.forEach((index, i) => {
+      const cell = document.querySelector(`[data-cell-index="${index}"]`);
+      if (cell) {
+        anime({
+          targets: cell,
+          scale: [1, 1.2, 1],
+          backgroundColor: ['#ffffff', '#10b981', '#ffffff'],
+          duration: 800,
+          delay: i * 150,
+          easing: 'easeInOutQuart',
+        });
+      }
+    });
+  };
+
+  const animateCellClick = (index: number) => {
+    const cell = document.querySelector(`[data-cell-index="${index}"]`);
+    const symbol = cell?.querySelector('.cell-symbol');
+    
+    if (cell && symbol) {
+      // Cell click animation
+      anime({
+        targets: cell,
+        scale: [1, 0.9, 1],
+        duration: 300,
+        easing: 'easeInOutQuart',
+      });
+
+      // Symbol appearance animation
+      anime({
+        targets: symbol,
+        scale: [0, 1.3, 1],
+        rotate: [0, 360],
+        opacity: [0, 1],
+        duration: 600,
+        easing: 'easeOutBack',
+      });
+
+      // Ripple effect
+      const ripple = document.createElement('div');
+      ripple.className = 'absolute inset-0 bg-blue-400/20 rounded-xl pointer-events-none';
+      cell.appendChild(ripple);
+
+      anime({
+        targets: ripple,
+        scale: [0, 2],
+        opacity: [1, 0],
+        duration: 500,
+        easing: 'easeOutCubic',
+        complete: () => ripple.remove()
+      });
+    }
+  };
+
   const triggerCelebration = () => {
-    const randomEmojis = Array.from({ length: 8 }, () => 
+    const randomEmojis = Array.from({ length: 12 }, () => 
       CELEBRATION_EMOJIS[Math.floor(Math.random() * CELEBRATION_EMOJIS.length)]
     );
     setCelebrationEmojis(randomEmojis);
-    setTimeout(() => setCelebrationEmojis([]), 3000);
+
+    // Enhanced celebration particle animation
+    setTimeout(() => {
+      anime({
+        targets: '.celebration-emoji',
+        translateY: [0, -200],
+        translateX: () => anime.random(-100, 100),
+        rotate: () => anime.random(-180, 180),
+        scale: [1, 0],
+        opacity: [1, 0],
+        duration: 2500,
+        delay: anime.stagger(100),
+        easing: 'easeOutCubic',
+        complete: () => setCelebrationEmojis([])
+      });
+    }, 100);
+
+    // Score update animation
+    if (scoreRef.current) {
+      anime({
+        targets: scoreRef.current,
+        scale: [1, 1.1, 1],
+        duration: 600,
+        easing: 'easeInOutQuart',
+      });
+    }
   };
 
   const handleCellClick = (index: number) => {
@@ -57,6 +182,9 @@ export default function TicTacToeGame() {
 
     setIsAnimating(true);
     setLastMove(index);
+    
+    // Trigger cell click animation
+    animateCellClick(index);
     
     setTimeout(() => {
       const newBoard = [...board];
@@ -73,30 +201,76 @@ export default function TicTacToeGame() {
           ...prev,
           [gameWinner === 'X' ? 'xWins' : 'oWins']: prev[gameWinner === 'X' ? 'xWins' : 'oWins'] + 1
         }));
-        triggerCelebration();
+        
+        // Delay winning animation
+        setTimeout(() => {
+          animateWinningLine(line);
+          triggerCelebration();
+        }, 500);
       } else if (newBoard.every(cell => cell !== null)) {
         setGameState('draw');
         setStats(prev => ({ ...prev, draws: prev.draws + 1 }));
+        triggerCelebration();
       } else {
         setCurrentPlayer(currentPlayer === 'X' ? 'O' : 'X');
+        
+        // Animate player turn indicator
+        if (gameStatusRef.current) {
+          anime({
+            targets: gameStatusRef.current,
+            scale: [1, 1.05, 1],
+            duration: 300,
+            easing: 'easeInOutQuart',
+          });
+        }
       }
       
       setIsAnimating(false);
-    }, 200);
+    }, 300);
   };
 
   const resetGame = () => {
-    setBoard(Array(9).fill(null));
-    setCurrentPlayer('X');
-    setGameState('playing');
-    setWinner(null);
-    setWinningLine([]);
-    setLastMove(null);
-    setCelebrationEmojis([]);
+    // Animate board reset
+    anime({
+      targets: '.cell-symbol',
+      scale: 0,
+      opacity: 0,
+      duration: 200,
+      easing: 'easeInQuart',
+      complete: () => {
+        setBoard(Array(9).fill(null));
+        setCurrentPlayer('X');
+        setGameState('playing');
+        setWinner(null);
+        setWinningLine([]);
+        setLastMove(null);
+        setCelebrationEmojis([]);
+
+        // Board re-entrance animation
+        if (boardRef.current) {
+          anime({
+            targets: boardRef.current.children,
+            scale: [0.8, 1],
+            duration: 400,
+            delay: anime.stagger(50),
+            easing: 'easeOutElastic(1, .8)',
+          });
+        }
+      }
+    });
   };
 
   const resetStats = () => {
-    setStats({ xWins: 0, oWins: 0, draws: 0 });
+    if (scoreRef.current) {
+      anime({
+        targets: scoreRef.current.children,
+        scale: [1, 0, 1],
+        duration: 400,
+        delay: anime.stagger(100),
+        easing: 'easeInOutQuart',
+        complete: () => setStats({ xWins: 0, oWins: 0, draws: 0 })
+      });
+    }
   };
 
   const getGameStatus = () => {
@@ -115,7 +289,7 @@ export default function TicTacToeGame() {
     return (
       <span 
         className={`
-          text-3xl sm:text-4xl lg:text-5xl font-bold transition-all duration-500 
+          cell-symbol text-3xl sm:text-4xl lg:text-5xl font-bold transition-all duration-500 
           ${value === 'X' 
             ? 'text-blue-600 dark:text-blue-400' 
             : 'text-red-600 dark:text-red-400'
@@ -138,7 +312,7 @@ export default function TicTacToeGame() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 dark:from-slate-900 dark:via-purple-900 dark:to-slate-800 p-2 sm:p-4 lg:p-6 relative overflow-hidden">
       {/* Animated Background Elements */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+      <div ref={backgroundRef} className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-blue-400/20 to-purple-600/20 rounded-full blur-3xl animate-pulse"></div>
         <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-br from-pink-400/20 to-red-600/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
       </div>
@@ -149,7 +323,7 @@ export default function TicTacToeGame() {
           {celebrationEmojis.map((emoji, index) => (
             <div
               key={index}
-              className="absolute text-4xl animate-bounce"
+              className="celebration-emoji absolute text-4xl animate-bounce"
               style={{
                 left: `${Math.random() * 100}%`,
                 top: `${Math.random() * 100}%`,
@@ -180,7 +354,7 @@ export default function TicTacToeGame() {
             <Card className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-xl border-0 shadow-2xl hover:shadow-3xl transition-all duration-300">
               <CardHeader className="text-center pb-4 sm:pb-6">
                 <CardTitle className="text-xl sm:text-2xl lg:text-3xl mb-2 sm:mb-4">
-                  <div className={`
+                  <div ref={gameStatusRef} className={`
                     transition-all duration-500 flex items-center justify-center gap-2 sm:gap-3
                     ${gameState === 'won' 
                       ? winner === 'X' 
@@ -222,10 +396,11 @@ export default function TicTacToeGame() {
               
               <CardContent className="px-4 sm:px-6 lg:px-8">
                 {/* Game Grid */}
-                <div className="grid grid-cols-3 gap-2 sm:gap-3 lg:gap-4 max-w-sm sm:max-w-md lg:max-w-lg xl:max-w-xl mx-auto mb-6 sm:mb-8">
+                <div ref={boardRef} className="grid grid-cols-3 gap-2 sm:gap-3 lg:gap-4 max-w-sm sm:max-w-md lg:max-w-lg xl:max-w-xl mx-auto mb-6 sm:mb-8">
                   {board.map((cell, index) => (
                     <button
                       key={index}
+                      data-cell-index={index}
                       onClick={() => handleCellClick(index)}
                       disabled={gameState !== 'playing' || cell !== null || isAnimating}
                       className={`
@@ -260,26 +435,28 @@ export default function TicTacToeGame() {
 
                 {/* Game Controls */}
                 <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4">
-                  <Button 
-                    onClick={resetGame}
+                  <AnimatedButton 
+                    onAnimatedClick={resetGame}
+                    animationType="bounce"
                     variant="outline"
                     size="lg"
-                    className="bg-white/70 dark:bg-slate-800/70 hover:bg-white dark:hover:bg-slate-700 border-2 hover:border-blue-300 dark:hover:border-blue-600 transition-all duration-300 hover:scale-105 active:scale-95"
+                    className="bg-white/70 dark:bg-slate-800/70 hover:bg-white dark:hover:bg-slate-700 border-2 hover:border-blue-300 dark:hover:border-blue-600 transition-all duration-300"
                   >
                     <RotateCcw className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
                     New Game
-                  </Button>
+                  </AnimatedButton>
                   
                   {(stats.xWins > 0 || stats.oWins > 0 || stats.draws > 0) && (
-                    <Button 
-                      onClick={resetStats}
+                    <AnimatedButton 
+                      onAnimatedClick={resetStats}
+                      animationType="pulse"
                       variant="outline"
                       size="lg"
-                      className="bg-white/70 dark:bg-slate-800/70 hover:bg-white dark:hover:bg-slate-700 border-2 hover:border-red-300 dark:hover:border-red-600 transition-all duration-300 hover:scale-105 active:scale-95"
+                      className="bg-white/70 dark:bg-slate-800/70 hover:bg-white dark:hover:bg-slate-700 border-2 hover:border-red-300 dark:hover:border-red-600 transition-all duration-300"
                     >
                       <Trophy className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
                       Reset Stats
-                    </Button>
+                    </AnimatedButton>
                   )}
                 </div>
               </CardContent>
@@ -296,7 +473,7 @@ export default function TicTacToeGame() {
                   Score Board
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3 sm:space-y-4">
+              <CardContent className="space-y-3 sm:space-y-4" ref={scoreRef}>
                 <div className="flex justify-between items-center p-2 sm:p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors duration-300">
                   <div className="flex items-center gap-2">
                     <Zap className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 dark:text-blue-400" />
