@@ -18,9 +18,9 @@ interface GameStats {
 }
 
 const WINNING_COMBINATIONS = [
-  [0, 1, 2], [3, 4, 5], [6, 7, 8], // Rows
-  [0, 3, 6], [1, 4, 7], [2, 5, 8], // Columns
-  [0, 4, 8], [2, 4, 6] // Diagonals
+  [0, 1, 2], [3, 4, 5], [6, 7, 8], // rows
+  [0, 3, 6], [1, 4, 7], [2, 5, 8], // columns
+  [0, 4, 8], [2, 4, 6] // diagonals
 ];
 
 const CELEBRATION_EMOJIS = ['🎉', '🎊', '✨', '🏆', '🎈', '🌟', '💫', '🎯'];
@@ -35,52 +35,44 @@ export default function TicTacToeGame() {
   const [celebrationEmojis, setCelebrationEmojis] = useState<string[]>([]);
   const [isAnimating, setIsAnimating] = useState(false);
   const [lastMove, setLastMove] = useState<number | null>(null);
-  
-  // Refs for animations
-  const boardRef = useRef<HTMLDivElement>(null);
-  const scoreRef = useRef<HTMLDivElement>(null);
-  const gameStatusRef = useRef<HTMLDivElement>(null);
-  const backgroundRef = useRef<HTMLDivElement>(null);
 
-  // Initial animations on component mount
+  const boardRef = useRef<HTMLDivElement>(null);
+  const backgroundRef = useRef<HTMLDivElement>(null);
+  const scoreRef = useRef<HTMLDivElement>(null);
+
+  // Enhanced board entrance animation
   useEffect(() => {
-    // Board entrance animation
     if (boardRef.current) {
       anime({
         targets: boardRef.current.children,
         scale: [0, 1],
-        opacity: [0, 1],
-        delay: anime.stagger(100, {start: 300}),
-        duration: 600,
-        easing: 'easeOutElastic(1, .8)',
-      });
-    }
-
-    // Background floating animation
-    if (backgroundRef.current) {
-      anime({
-        targets: backgroundRef.current.children,
-        rotate: '1turn',
-        duration: 20000,
-        loop: true,
-        easing: 'linear',
-      });
-    }
-
-    // Initial status animation
-    if (gameStatusRef.current) {
-      anime({
-        targets: gameStatusRef.current,
-        opacity: [0, 1],
-        translateY: [-20, 0],
+        rotate: [180, 0],
         duration: 800,
-        easing: 'easeOutCubic',
+        delay: anime.stagger(80, {start: 200}),
+        easing: 'easeOutElastic(1, .8)',
       });
     }
   }, []);
 
-  const checkWinner = (board: Player[]): { winner: Player; line: number[] } => {
-    for (const [a, b, c] of WINNING_COMBINATIONS) {
+  // Enhanced background animation
+  useEffect(() => {
+    if (backgroundRef.current) {
+      anime({
+        targets: backgroundRef.current.children,
+        translateY: [-20, 20],
+        opacity: [0.3, 0.7, 0.3],
+        duration: 4000,
+        direction: 'alternate',
+        loop: true,
+        delay: anime.stagger(1000),
+        easing: 'easeInOutSine'
+      });
+    }
+  }, []);
+
+  const checkWinner = (board: Player[]) => {
+    for (const combo of WINNING_COMBINATIONS) {
+      const [a, b, c] = combo;
       if (board[a] && board[a] === board[b] && board[a] === board[c]) {
         return { winner: board[a], line: [a, b, c] };
       }
@@ -88,93 +80,76 @@ export default function TicTacToeGame() {
     return { winner: null, line: [] };
   };
 
-  // Animation functions
+  const animateCellClick = (cellIndex: number) => {
+    const cell = boardRef.current?.children[cellIndex] as HTMLElement;
+    if (!cell) return;
+
+    // Enhanced click animation
+    anime({
+      targets: cell,
+      scale: [1, 1.1, 1],
+      backgroundColor: [
+        'rgba(99, 102, 241, 0.1)',
+        'rgba(99, 102, 241, 0.3)',
+        'rgba(255, 255, 255, 0)'
+      ],
+      duration: 600,
+      easing: 'easeOutElastic(1, .8)',
+    });
+
+    // Enhanced symbol entrance
+    const symbolElement = cell.querySelector('.cell-symbol');
+    if (symbolElement) {
+      anime({
+        targets: symbolElement,
+        scale: [0, 1.2, 1],
+        rotate: [90, 0],
+        opacity: [0, 1],
+        duration: 500,
+        easing: 'easeOutBounce',
+      });
+    }
+  };
+
   const animateWinningLine = (line: number[]) => {
-    line.forEach((index, i) => {
-      const cell = document.querySelector(`[data-cell-index="${index}"]`);
-      if (cell) {
-        anime({
-          targets: cell,
-          scale: [1, 1.2, 1],
-          backgroundColor: ['#ffffff', '#10b981', '#ffffff'],
-          duration: 800,
-          delay: i * 150,
-          easing: 'easeInOutQuart',
-        });
-      }
+    const cells = line.map(index => boardRef.current?.children[index]).filter(Boolean);
+    
+    anime({
+      targets: cells,
+      scale: [1, 1.15, 1.05],
+      backgroundColor: [
+        'rgba(34, 197, 94, 0.2)',
+        'rgba(34, 197, 94, 0.4)',
+        'rgba(34, 197, 94, 0.3)'
+      ],
+      duration: 1200,
+      delay: anime.stagger(100),
+      direction: 'alternate',
+      loop: 3,
+      easing: 'easeInOutQuart',
     });
   };
 
-  const animateCellClick = (index: number) => {
-    const cell = document.querySelector(`[data-cell-index="${index}"]`);
-    const symbol = cell?.querySelector('.cell-symbol');
-    
-    if (cell && symbol) {
-      // Cell click animation
-      anime({
-        targets: cell,
-        scale: [1, 0.9, 1],
-        duration: 300,
-        easing: 'easeInOutQuart',
-      });
-
-      // Symbol appearance animation
-      anime({
-        targets: symbol,
-        scale: [0, 1.3, 1],
-        rotate: [0, 360],
-        opacity: [0, 1],
-        duration: 600,
-        easing: 'easeOutBack',
-      });
-
-      // Ripple effect
-      const ripple = document.createElement('div');
-      ripple.className = 'absolute inset-0 bg-blue-400/20 rounded-xl pointer-events-none';
-      cell.appendChild(ripple);
-
-      anime({
-        targets: ripple,
-        scale: [0, 2],
-        opacity: [1, 0],
-        duration: 500,
-        easing: 'easeOutCubic',
-        complete: () => ripple.remove()
-      });
-    }
-  };
-
   const triggerCelebration = () => {
-    const randomEmojis = Array.from({ length: 12 }, () => 
+    // Enhanced celebration animation
+    const newEmojis = Array.from({ length: 12 }, () => 
       CELEBRATION_EMOJIS[Math.floor(Math.random() * CELEBRATION_EMOJIS.length)]
     );
-    setCelebrationEmojis(randomEmojis);
+    setCelebrationEmojis(newEmojis);
 
-    // Enhanced celebration particle animation
-    setTimeout(() => {
+    // Board celebration shake
+    if (boardRef.current) {
       anime({
-        targets: '.celebration-emoji',
-        translateY: [0, -200],
-        translateX: () => anime.random(-100, 100),
-        rotate: () => anime.random(-180, 180),
-        scale: [1, 0],
-        opacity: [1, 0],
-        duration: 2500,
-        delay: anime.stagger(100),
-        easing: 'easeOutCubic',
-        complete: () => setCelebrationEmojis([])
-      });
-    }, 100);
-
-    // Score update animation
-    if (scoreRef.current) {
-      anime({
-        targets: scoreRef.current,
-        scale: [1, 1.1, 1],
+        targets: boardRef.current,
+        translateX: [-5, 5, -3, 3, 0],
+        translateY: [-2, 2, -1, 1, 0],
         duration: 600,
-        easing: 'easeInOutQuart',
+        easing: 'easeInOutQuart'
       });
     }
+
+    // Clear emojis after animation
+    setTimeout(() => setCelebrationEmojis([]), 3000);
   };
 
   const handleCellClick = (index: number) => {
@@ -183,81 +158,73 @@ export default function TicTacToeGame() {
     setIsAnimating(true);
     setLastMove(index);
     
-    // Trigger cell click animation
-    animateCellClick(index);
-    
-    setTimeout(() => {
-      const newBoard = [...board];
-      newBoard[index] = currentPlayer;
-      setBoard(newBoard);
+    const newBoard = [...board];
+    newBoard[index] = currentPlayer;
+    setBoard(newBoard);
 
-      const { winner: gameWinner, line } = checkWinner(newBoard);
+    animateCellClick(index);
+
+    const { winner: gameWinner, line } = checkWinner(newBoard);
+    
+    if (gameWinner) {
+      setWinner(gameWinner);
+      setGameState('won');
+      setWinningLine(line);
+      setStats(prev => ({
+        ...prev,
+        [gameWinner === 'X' ? 'xWins' : 'oWins']: prev[gameWinner === 'X' ? 'xWins' : 'oWins'] + 1
+      }));
       
-      if (gameWinner) {
-        setWinner(gameWinner);
-        setWinningLine(line);
-        setGameState('won');
-        setStats(prev => ({
-          ...prev,
-          [gameWinner === 'X' ? 'xWins' : 'oWins']: prev[gameWinner === 'X' ? 'xWins' : 'oWins'] + 1
-        }));
-        
-        // Delay winning animation
-        setTimeout(() => {
-          animateWinningLine(line);
-          triggerCelebration();
-        }, 500);
-      } else if (newBoard.every(cell => cell !== null)) {
-        setGameState('draw');
-        setStats(prev => ({ ...prev, draws: prev.draws + 1 }));
+      setTimeout(() => {
+        animateWinningLine(line);
         triggerCelebration();
-      } else {
-        setCurrentPlayer(currentPlayer === 'X' ? 'O' : 'X');
-        
-        // Animate player turn indicator
-        if (gameStatusRef.current) {
-          anime({
-            targets: gameStatusRef.current,
-            scale: [1, 1.05, 1],
-            duration: 300,
-            easing: 'easeInOutQuart',
-          });
-        }
-      }
-      
-      setIsAnimating(false);
-    }, 300);
+      }, 500);
+    } else if (newBoard.every(cell => cell !== null)) {
+      setGameState('draw');
+      setStats(prev => ({ ...prev, draws: prev.draws + 1 }));
+    } else {
+      setCurrentPlayer(currentPlayer === 'X' ? 'O' : 'X');
+    }
+
+    setTimeout(() => setIsAnimating(false), 600);
   };
 
   const resetGame = () => {
-    // Animate board reset
-    anime({
-      targets: '.cell-symbol',
-      scale: 0,
-      opacity: 0,
-      duration: 200,
-      easing: 'easeInQuart',
-      complete: () => {
-        setBoard(Array(9).fill(null));
-        setCurrentPlayer('X');
-        setGameState('playing');
-        setWinner(null);
-        setWinningLine([]);
-        setLastMove(null);
-        setCelebrationEmojis([]);
+    setIsAnimating(true);
+    
+    // Enhanced reset animation
+    if (boardRef.current) {
+      anime({
+        targets: boardRef.current.children,
+        scale: [1, 0],
+        rotate: [0, 180],
+        duration: 400,
+        delay: anime.stagger(50, {from: 'center'}),
+        easing: 'easeInBack',
+        complete: () => {
+          setBoard(Array(9).fill(null));
+          setCurrentPlayer('X');
+          setGameState('playing');
+          setWinner(null);
+          setWinningLine([]);
+          setLastMove(null);
+          setCelebrationEmojis([]);
 
-        // Board re-entrance animation
-        if (boardRef.current) {
-          anime({
-            targets: boardRef.current.children,
-            scale: [0.8, 1],
-            duration: 400,
-            delay: anime.stagger(50),
-            easing: 'easeOutElastic(1, .8)',
-          });
+          // Board re-entrance animation
+          if (boardRef.current) {
+            anime({
+              targets: boardRef.current.children,
+              scale: [0.8, 1],
+              duration: 400,
+              delay: anime.stagger(50),
+              easing: 'easeOutElastic(1, .8)',
+            });
+          }
         }
-      }
-    });
+      });
+    }
+
+    setTimeout(() => setIsAnimating(false), 800);
   };
 
   const resetStats = () => {
@@ -276,7 +243,7 @@ export default function TicTacToeGame() {
   const getGameStatus = () => {
     if (gameState === 'won') return `Player ${winner} Wins!`;
     if (gameState === 'draw') return "It's a Draw!";
-    return `Player ${currentPlayer}'s Turn`;
+    return `Player ${currentPlayer}&apos;s Turn`;
   };
 
   const getCellContent = (index: number) => {
@@ -289,12 +256,12 @@ export default function TicTacToeGame() {
     return (
       <span 
         className={`
-          cell-symbol text-3xl sm:text-4xl lg:text-5xl font-bold transition-all duration-500 
+          cell-symbol text-4xl sm:text-5xl lg:text-6xl font-black transition-all duration-500 drop-shadow-lg
           ${value === 'X' 
             ? 'text-blue-600 dark:text-blue-400' 
-            : 'text-red-600 dark:text-red-400'
+            : 'text-emerald-600 dark:text-emerald-400'
           }
-          ${isWinningCell ? 'animate-pulse scale-110' : ''}
+          ${isWinningCell ? 'animate-pulse scale-110 text-green-500 dark:text-green-400' : ''}
           ${isLastMoveCell ? 'animate-bounce' : ''}
         `}
       >
@@ -303,14 +270,11 @@ export default function TicTacToeGame() {
     );
   };
 
-  const getPlayerIcon = (player: Player) => {
-    if (player === 'X') return <Zap className="w-4 h-4 sm:w-5 sm:h-5" />;
-    if (player === 'O') return <Crown className="w-4 h-4 sm:w-5 sm:h-5" />;
-    return null;
-  };
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 dark:from-slate-900 dark:via-purple-900 dark:to-slate-800 p-2 sm:p-4 lg:p-6 relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-gray-950 dark:via-blue-950 dark:to-indigo-950 relative overflow-hidden">
+      {/* Enhanced gradient overlay */}
+      <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-blue-500/10 dark:from-blue-900/20 dark:via-transparent dark:to-purple-900/20"></div>
+      
       {/* Animated Background Elements */}
       <div ref={backgroundRef} className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-blue-400/20 to-purple-600/20 rounded-full blur-3xl animate-pulse"></div>
@@ -327,8 +291,8 @@ export default function TicTacToeGame() {
               style={{
                 left: `${Math.random() * 100}%`,
                 top: `${Math.random() * 100}%`,
-                animationDelay: `${index * 200}ms`,
-                animationDuration: '2s'
+                animationDelay: `${Math.random() * 2}s`,
+                animationDuration: `${1 + Math.random()}s`
               }}
             >
               {emoji}
@@ -337,66 +301,38 @@ export default function TicTacToeGame() {
         </div>
       )}
 
-      <div className="max-w-7xl mx-auto relative z-10">
-        {/* Header */}
-        <div className="text-center mb-4 sm:mb-6 lg:mb-8">
-          <h1 className="text-4xl sm:text-4xl lg:text-6xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent mb-2 sm:mb-4">
-            Tic-Tac-Toe
-          </h1>
-          <p className="text-sm sm:text-base lg:text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto px-4">
-            Challenge your opponent in this classic strategy game with modern flair
-          </p>
-        </div>
+      <div className="relative z-10 min-h-screen flex flex-col lg:flex-row gap-8 p-6 sm:p-8 lg:p-12">
+        {/* Enhanced Main Game Section */}
+        <div className="flex-1 max-w-2xl mx-auto lg:mx-0">
+          {/* Enhanced Header */}
+          <div className="text-center mb-8 sm:mb-12 lg:mb-16">
+            <h1 className="text-4xl sm:text-5xl lg:text-7xl font-black mb-4 sm:mb-6 bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 dark:from-blue-400 dark:via-purple-400 dark:to-indigo-400 bg-clip-text text-transparent drop-shadow-lg">
+              Tic Tac Toe
+            </h1>
+            <div className="flex items-center justify-center gap-3 sm:gap-4 p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl border border-white/30 dark:border-slate-700/30 shadow-xl">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <Trophy className="w-6 h-6 sm:w-8 sm:h-8 text-yellow-500 dark:text-yellow-400" />
+                <span className="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-800 dark:text-slate-200">
+                  {getGameStatus()}
+                </span>
+              </div>
+            </div>
+          </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
-          {/* Game Board */}
-          <div className="xl:col-span-3 order-2 xl:order-1">
-            <Card className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-xl border-0 shadow-2xl hover:shadow-3xl transition-all duration-300">
-              <CardHeader className="text-center pb-4 sm:pb-6">
-                <CardTitle className="text-xl sm:text-2xl lg:text-3xl mb-2 sm:mb-4">
-                  <div ref={gameStatusRef} className={`
-                    transition-all duration-500 flex items-center justify-center gap-2 sm:gap-3
-                    ${gameState === 'won' 
-                      ? winner === 'X' 
-                        ? 'text-blue-600 dark:text-blue-400 animate-pulse' 
-                        : 'text-red-600 dark:text-red-400 animate-pulse'
-                      : gameState === 'draw'
-                      ? 'text-amber-600 dark:text-amber-400'
-                      : currentPlayer === 'X'
-                      ? 'text-blue-600 dark:text-blue-400'
-                      : 'text-red-600 dark:text-red-400'
-                    }
-                  `}>
-                    {gameState === 'won' && <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 animate-spin" />}
-                    {getGameStatus()}
-                    {gameState === 'won' && <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 animate-spin" />}
-                  </div>
-                </CardTitle>
-                
-                {gameState === 'playing' && (
-                  <div className="flex items-center justify-center gap-2 text-sm sm:text-base">
-                    <Users className="w-4 h-4 sm:w-5 sm:h-5" />
-                    <span className="text-slate-600 dark:text-slate-400">
-                      Current Player: 
-                    </span>
-                    <div className={`
-                      flex items-center gap-1 sm:gap-2 font-semibold px-2 sm:px-3 py-1 rounded-full
-                      ${currentPlayer === 'X' 
-                        ? 'text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30' 
-                        : 'text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30'
-                      }
-                      animate-pulse
-                    `}>
-                      {getPlayerIcon(currentPlayer)}
-                      {currentPlayer}
-                    </div>
-                  </div>
-                )}
-              </CardHeader>
-              
-              <CardContent className="px-4 sm:px-6 lg:px-8">
-                {/* Game Grid */}
-                <div ref={boardRef} className="grid grid-cols-3 gap-2 sm:gap-3 lg:gap-4 max-w-sm sm:max-w-md lg:max-w-lg xl:max-w-xl mx-auto mb-6 sm:mb-8">
+          {/* Enhanced Game Card */}
+          <Card className="bg-white/95 dark:bg-slate-800/95 backdrop-blur-2xl border border-white/20 dark:border-slate-700/30 shadow-2xl hover:shadow-3xl transition-all duration-500 rounded-3xl overflow-hidden">
+            <CardHeader className="text-center pb-4 sm:pb-6 lg:pb-8 px-6 sm:px-8 lg:px-12 py-6 sm:py-8 lg:py-10 bg-gradient-to-br from-blue-50/50 to-indigo-50/50 dark:from-blue-950/30 dark:to-indigo-950/30">
+              <CardTitle className="text-2xl sm:text-3xl lg:text-4xl font-bold">
+                <span className="bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400 bg-clip-text text-transparent">
+                  Game Board
+                </span>
+              </CardTitle>
+            </CardHeader>
+            
+            <CardContent className="px-6 sm:px-8 lg:px-12 pb-8 sm:pb-10 lg:pb-12">
+              {/* Enhanced Game Grid */}
+              <div className="mb-10 sm:mb-12 lg:mb-16">
+                <div ref={boardRef} className="grid grid-cols-3 gap-3 sm:gap-4 lg:gap-6 max-w-md sm:max-w-lg lg:max-w-xl mx-auto p-6 sm:p-8 lg:p-10 bg-gradient-to-br from-gray-50/50 to-white/50 dark:from-gray-800/30 dark:to-gray-900/30 rounded-3xl border border-gray-200/30 dark:border-gray-700/30 backdrop-blur-sm shadow-xl">
                   {board.map((cell, index) => (
                     <button
                       key={index}
@@ -404,142 +340,156 @@ export default function TicTacToeGame() {
                       onClick={() => handleCellClick(index)}
                       disabled={gameState !== 'playing' || cell !== null || isAnimating}
                       className={`
-                        aspect-square rounded-xl sm:rounded-2xl border-2 transition-all duration-300
-                        flex items-center justify-center relative overflow-hidden
+                        aspect-square rounded-2xl sm:rounded-3xl border-3 transition-all duration-300
+                        flex items-center justify-center relative overflow-hidden group
+                        min-h-[80px] sm:min-h-[100px] lg:min-h-[120px] font-black text-4xl sm:text-5xl lg:text-6xl
                         ${winningLine.includes(index) 
-                          ? 'bg-gradient-to-br from-emerald-200 to-emerald-300 dark:from-emerald-800 dark:to-emerald-700 border-emerald-400 shadow-lg shadow-emerald-200 dark:shadow-emerald-800 animate-pulse' 
+                          ? 'border-green-400 dark:border-green-500 bg-green-50 dark:bg-green-950/30 shadow-lg shadow-green-400/30' 
                           : cell 
-                          ? 'bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-600 border-slate-300 dark:border-slate-500 shadow-md' 
-                          : 'bg-gradient-to-br from-white to-slate-50 dark:from-slate-800 dark:to-slate-700 border-slate-200 dark:border-slate-600 hover:border-slate-300 dark:hover:border-slate-500 hover:shadow-lg hover:shadow-blue-200/50 dark:hover:shadow-blue-800/50'
+                          ? 'border-blue-300 dark:border-blue-600 bg-blue-50 dark:bg-blue-950/30' 
+                          : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-slate-800 hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/20 hover:shadow-lg hover:scale-105'
                         }
-                        ${gameState === 'playing' && !cell ? 'cursor-pointer hover:scale-105 active:scale-95' : 'cursor-default'}
-                        ${lastMove === index ? 'ring-4 ring-purple-400/50 animate-pulse' : ''}
-                        disabled:opacity-50
-                        min-h-[60px] sm:min-h-[80px] lg:min-h-[100px]
+                        ${!cell && gameState === 'playing' ? 'cursor-pointer' : 'cursor-default'}
+                        disabled:opacity-50 disabled:cursor-not-allowed
+                        shadow-lg hover:shadow-xl
                       `}
                     >
-                      {/* Hover effect overlay */}
-                      {!cell && gameState === 'playing' && (
-                        <div className="absolute inset-0 bg-gradient-to-br from-blue-400/10 to-purple-400/10 opacity-0 hover:opacity-100 transition-opacity duration-300 rounded-xl sm:rounded-2xl"></div>
-                      )}
-                      
                       {getCellContent(index)}
                       
-                      {/* Ripple effect */}
+                      {/* Enhanced Ripple effect */}
                       {lastMove === index && (
-                        <div className="absolute inset-0 bg-purple-400/20 rounded-xl sm:rounded-2xl animate-ping"></div>
+                        <div className="absolute inset-0 bg-gradient-to-br from-purple-400/30 to-pink-400/30 rounded-2xl sm:rounded-3xl animate-ping"></div>
                       )}
                     </button>
                   ))}
                 </div>
+              </div>
 
-                {/* Game Controls */}
-                <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4">
-                  <AnimatedButton 
-                    onAnimatedClick={resetGame}
-                    animationType="bounce"
-                    variant="outline"
-                    size="lg"
-                    className="bg-white/70 dark:bg-slate-800/70 hover:bg-white dark:hover:bg-slate-700 border-2 hover:border-blue-300 dark:hover:border-blue-600 transition-all duration-300"
-                  >
-                    <RotateCcw className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
-                    New Game
-                  </AnimatedButton>
-                  
-                  {(stats.xWins > 0 || stats.oWins > 0 || stats.draws > 0) && (
-                    <AnimatedButton 
-                      onAnimatedClick={resetStats}
-                      animationType="pulse"
-                      variant="outline"
-                      size="lg"
-                      className="bg-white/70 dark:bg-slate-800/70 hover:bg-white dark:hover:bg-slate-700 border-2 hover:border-red-300 dark:hover:border-red-600 transition-all duration-300"
-                    >
-                      <Trophy className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
-                      Reset Stats
-                    </AnimatedButton>
-                  )}
+              {/* Game Controls */}
+              <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4">
+                <AnimatedButton 
+                  onAnimatedClick={resetGame}
+                  animationType="bounce"
+                  variant="outline"
+                  size="lg"
+                  className="bg-white/70 dark:bg-slate-800/70 hover:bg-white dark:hover:bg-slate-700 border-2 hover:border-blue-300 dark:hover:border-blue-600 transition-all duration-300"
+                >
+                  <RotateCcw className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
+                  New Game
+                </AnimatedButton>
+                
+                <AnimatedButton 
+                  onAnimatedClick={resetStats}
+                  animationType="pulse"
+                  variant="outline"
+                  size="lg"
+                  className="bg-white/70 dark:bg-slate-800/70 hover:bg-white dark:hover:bg-slate-700 border-2 hover:border-purple-300 dark:hover:border-purple-600 transition-all duration-300"
+                >
+                  <Trophy className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
+                  Reset Stats
+                </AnimatedButton>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Enhanced Sidebar */}
+        <div className="w-full lg:w-80 xl:w-96 space-y-6 sm:space-y-8">
+          {/* Enhanced Score Card */}
+          <Card className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-2xl border border-white/20 dark:border-gray-700/30 shadow-2xl hover:shadow-3xl transition-all duration-500 rounded-3xl overflow-hidden">
+            <CardHeader className="pb-4 sm:pb-6 px-6 sm:px-8 py-6 sm:py-8 bg-gradient-to-br from-blue-50/50 to-purple-50/50 dark:from-blue-950/30 dark:to-purple-950/30">
+              <CardTitle className="text-lg sm:text-xl font-bold flex items-center gap-3">
+                <div className="p-2 rounded-xl bg-blue-100 dark:bg-blue-900/50">
+                  <Users className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 dark:text-blue-400" />
                 </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Sidebar */}
-          <div className="space-y-4 sm:space-y-6 order-1 xl:order-2">
-            {/* Score Card */}
-            <Card className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-xl border-0 shadow-2xl hover:shadow-3xl transition-all duration-300">
-              <CardHeader className="pb-3 sm:pb-4">
-                <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
-                  <Trophy className="w-5 h-5 sm:w-6 sm:h-6 text-amber-500 animate-pulse" />
+                <span className="bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent">
                   Score Board
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3 sm:space-y-4" ref={scoreRef}>
-                <div className="flex justify-between items-center p-2 sm:p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors duration-300">
-                  <div className="flex items-center gap-2">
-                    <Zap className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 dark:text-blue-400" />
-                    <span className="text-blue-600 dark:text-blue-400 font-semibold text-sm sm:text-base">Player X</span>
+                </span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent ref={scoreRef} className="px-6 sm:px-8 pb-6 sm:pb-8 space-y-4 sm:space-y-5">
+              {/* Player X */}
+              <div className="flex justify-between items-center p-4 sm:p-5 rounded-2xl bg-blue-50 dark:bg-blue-950/30 hover:bg-blue-100 dark:hover:bg-blue-950/50 transition-all duration-300 border border-blue-200/50 dark:border-blue-800/30 group">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-xl bg-blue-200 dark:bg-blue-800 group-hover:scale-110 transition-transform duration-300">
+                    <Zap className="w-5 h-5 sm:w-6 sm:h-6 text-blue-700 dark:text-blue-300" />
                   </div>
-                  <Badge variant="secondary" className="bg-blue-200 dark:bg-blue-800 text-blue-800 dark:text-blue-200 hover:scale-110 transition-transform duration-300">
-                    {stats.xWins}
-                  </Badge>
+                  <span className="text-blue-700 dark:text-blue-300 font-bold text-lg sm:text-xl">Player X</span>
                 </div>
-                
-                <div className="flex justify-between items-center p-2 sm:p-3 rounded-lg bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors duration-300">
-                  <div className="flex items-center gap-2">
-                    <Crown className="w-4 h-4 sm:w-5 sm:h-5 text-red-600 dark:text-red-400" />
-                    <span className="text-red-600 dark:text-red-400 font-semibold text-sm sm:text-base">Player O</span>
-                  </div>
-                  <Badge variant="secondary" className="bg-red-200 dark:bg-red-800 text-red-800 dark:text-red-200 hover:scale-110 transition-transform duration-300">
-                    {stats.oWins}
-                  </Badge>
-                </div>
-                
-                <div className="flex justify-between items-center p-2 sm:p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors duration-300">
-                  <span className="text-amber-600 dark:text-amber-400 font-semibold text-sm sm:text-base">Draws</span>
-                  <Badge variant="secondary" className="bg-amber-200 dark:bg-amber-800 text-amber-800 dark:text-amber-200 hover:scale-110 transition-transform duration-300">
-                    {stats.draws}
-                  </Badge>
-                </div>
-                
-                <Separator className="my-3 sm:my-4" />
-                
-                <div className="flex justify-between items-center font-semibold p-2 sm:p-3 rounded-lg bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20">
-                  <span className="text-sm sm:text-base">Total Games</span>
-                  <Badge variant="outline" className="hover:scale-110 transition-transform duration-300">
-                    {stats.xWins + stats.oWins + stats.draws}
-                  </Badge>
-                </div>
-              </CardContent>
-            </Card>
+                <Badge className="bg-blue-200 dark:bg-blue-800 text-blue-800 dark:text-blue-200 hover:scale-110 transition-transform duration-300 px-4 py-2 text-lg font-bold rounded-xl">
+                  {stats.xWins}
+                </Badge>
+              </div>
 
-            {/* Game Rules */}
-            <Card className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-xl border-0 shadow-2xl hover:shadow-3xl transition-all duration-300">
-              <CardHeader className="pb-3 sm:pb-4">
-                <CardTitle className="text-base sm:text-lg flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-purple-500" />
+              {/* Player O */}
+              <div className="flex justify-between items-center p-4 sm:p-5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 hover:bg-emerald-100 dark:hover:bg-emerald-950/50 transition-all duration-300 border border-emerald-200/50 dark:border-emerald-800/30 group">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-xl bg-emerald-200 dark:bg-emerald-800 group-hover:scale-110 transition-transform duration-300">
+                    <Crown className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-700 dark:text-emerald-300" />
+                  </div>
+                  <span className="text-emerald-700 dark:text-emerald-300 font-bold text-lg sm:text-xl">Player O</span>
+                </div>
+                <Badge className="bg-emerald-200 dark:bg-emerald-800 text-emerald-800 dark:text-emerald-200 hover:scale-110 transition-transform duration-300 px-4 py-2 text-lg font-bold rounded-xl">
+                  {stats.oWins}
+                </Badge>
+              </div>
+
+              {/* Draws */}
+              <div className="flex justify-between items-center p-4 sm:p-5 rounded-2xl bg-gray-50 dark:bg-gray-950/30 hover:bg-gray-100 dark:hover:bg-gray-950/50 transition-all duration-300 border border-gray-200/50 dark:border-gray-800/30 group">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-xl bg-gray-200 dark:bg-gray-800 group-hover:scale-110 transition-transform duration-300">
+                    <Trophy className="w-5 h-5 sm:w-6 sm:h-6 text-gray-700 dark:text-gray-300" />
+                  </div>
+                  <span className="text-gray-700 dark:text-gray-300 font-bold text-lg sm:text-xl">Draws</span>
+                </div>
+                <Badge className="bg-gray-200 dark:bg-gray-800 text-gray-800 dark:text-gray-200 hover:scale-110 transition-transform duration-300 px-4 py-2 text-lg font-bold rounded-xl">
+                  {stats.draws}
+                </Badge>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Separator className="bg-gradient-to-r from-transparent via-gray-300 dark:via-gray-600 to-transparent" />
+
+          {/* Enhanced Game Rules */}
+          <Card className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-2xl border border-white/20 dark:border-gray-700/30 shadow-2xl hover:shadow-3xl transition-all duration-500 rounded-3xl overflow-hidden">
+            <CardHeader className="pb-4 sm:pb-6 px-6 sm:px-8 py-6 sm:py-8 bg-gradient-to-br from-indigo-50/50 to-purple-50/50 dark:from-indigo-950/30 dark:to-purple-950/30">
+              <CardTitle className="text-lg sm:text-xl font-bold flex items-center gap-3">
+                <div className="p-2 rounded-xl bg-indigo-100 dark:bg-indigo-900/50">
+                  <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-indigo-600 dark:text-indigo-400" />
+                </div>
+                <span className="bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-400 dark:to-purple-400 bg-clip-text text-transparent">
                   How to Play
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4 text-xs sm:text-sm text-slate-600 dark:text-slate-400">
-                <div className="flex items-start gap-2">
-                  <span className="text-blue-500 font-bold">•</span>
-                  <p>Players take turns placing X and O</p>
+                </span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-6 sm:px-8 pb-6 sm:pb-8 space-y-4 sm:space-y-5">
+              <div className="flex items-start gap-4 p-4 rounded-2xl bg-blue-50/50 dark:bg-blue-950/20 border border-blue-200/30 dark:border-blue-800/20">
+                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-500 dark:bg-blue-600 flex items-center justify-center">
+                  <span className="text-white font-bold text-sm">1</span>
                 </div>
-                <div className="flex items-start gap-2">
-                  <span className="text-red-500 font-bold">•</span>
-                  <p>First to get 3 in a row wins</p>
+                <p className="text-gray-700 dark:text-gray-300 font-medium leading-relaxed">Players take turns placing X and O</p>
+              </div>
+              <div className="flex items-start gap-4 p-4 rounded-2xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200/30 dark:border-emerald-800/20">
+                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-emerald-500 dark:bg-emerald-600 flex items-center justify-center">
+                  <span className="text-white font-bold text-sm">2</span>
                 </div>
-                <div className="flex items-start gap-2">
-                  <span className="text-green-500 font-bold">•</span>
-                  <p>Rows, columns, or diagonals count</p>
+                <p className="text-gray-700 dark:text-gray-300 font-medium leading-relaxed">First to get 3 in a row wins</p>
+              </div>
+              <div className="flex items-start gap-4 p-4 rounded-2xl bg-purple-50/50 dark:bg-purple-950/20 border border-purple-200/30 dark:border-purple-800/20">
+                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-purple-500 dark:bg-purple-600 flex items-center justify-center">
+                  <span className="text-white font-bold text-sm">3</span>
                 </div>
-                <div className="flex items-start gap-2">
-                  <span className="text-amber-500 font-bold">•</span>
-                  <p>If all squares are filled, it&#39;s a draw</p>
+                <p className="text-gray-700 dark:text-gray-300 font-medium leading-relaxed">Rows, columns, or diagonals count</p>
+              </div>
+              <div className="flex items-start gap-4 p-4 rounded-2xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/30 dark:border-amber-800/20">
+                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-amber-500 dark:bg-amber-600 flex items-center justify-center">
+                  <span className="text-white font-bold text-sm">4</span>
                 </div>
-              </CardContent>
-            </Card>
-          </div>
+                <p className="text-gray-700 dark:text-gray-300 font-medium leading-relaxed">If all squares are filled, it&apos;s a draw</p>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>
